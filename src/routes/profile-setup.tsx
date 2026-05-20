@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import RequireAuth from "@/components/RequireAuth";
-import type { ResumeData } from "@/types";
+import { Plus } from "lucide-react";
 
 export const Route = createFileRoute("/profile-setup")({
   component: () => (
@@ -11,137 +11,486 @@ export const Route = createFileRoute("/profile-setup")({
   ),
 });
 
+interface ResumeData {
+  basics: {
+    full_name: string;
+    headline: string;
+    emails: string[];
+    phones: string[];
+    location: string;
+    links: {
+      label: string;
+      url: string;
+    }[];
+  };
+
+  sections: {
+    id: string;
+    title: string;
+    type: string;
+    content: any[];
+    raw_text: string;
+  }[];
+
+  metadata: {
+    section_order: string[];
+    parsing_confidence: number;
+  };
+
+  raw_resume_text: string;
+}
+
+function normalizeResumeData(data: any): ResumeData {
+  return {
+    basics: data?.basics ?? {
+      full_name: "",
+      headline: "",
+      emails: [],
+      phones: [],
+      location: "",
+      links: [],
+    },
+
+    sections: Array.isArray(data?.sections)
+      ? data.sections
+      : [],
+
+    metadata: data?.metadata ?? {
+      section_order: [],
+      parsing_confidence: 0,
+    },
+
+    raw_resume_text:
+      data?.raw_resume_text ?? "",
+  };
+}
+
 function ProfileSetupPage() {
-  const [file, setFile] = useState<File | null>(null);
-  const [loading, setLoading] = useState<boolean>(false);
-  const [parsedData, setParsedData] = useState<ResumeData | null>(null);
   const navigate = useNavigate();
 
-  const handleUpload = async (e: React.FormEvent<HTMLFormElement>): Promise<void> => {
+  const [file, setFile] =
+    useState<File | null>(null);
+
+  const [loading, setLoading] =
+    useState(false);
+
+  const [saving, setSaving] =
+    useState(false);
+
+  const [error, setError] = useState("");
+
+  const [parsedData, setParsedData] =
+    useState<ResumeData | null>(null);
+
+  const handleUpload = async (
+    e: React.FormEvent<HTMLFormElement>
+  ) => {
     e.preventDefault();
-    if (!file) return;
+
+    setError("");
+
+    if (!file) {
+      setError("Please select a resume.");
+      return;
+    }
+
     setLoading(true);
 
-    const formData = new FormData();
-    formData.append("file", file);
-
     try {
-      const token = localStorage.getItem("token");
-      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/resume/upload`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
-        body: formData,
-      });
+      const token =
+        localStorage.getItem("token");
+
+      if (!token) {
+        navigate({ to: "/login" });
+        return;
+      }
+
+      const formData = new FormData();
+
+      formData.append("file", file);
+
+      const res = await fetch(
+        `${import.meta.env.VITE_API_BASE_URL}/api/resume/upload`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          body: formData,
+        }
+      );
+
       const data = await res.json();
-      setParsedData(data.profile);
-    } catch (err) {
+
+      if (!res.ok) {
+        throw new Error(
+          data?.detail ??
+            "Resume upload failed."
+        );
+      }
+
+      if (!data?.profile) {
+        throw new Error(
+          "No parsed data returned."
+        );
+      }
+
+      setParsedData(
+        normalizeResumeData(data.profile)
+      );
+    } catch (err: any) {
       console.error(err);
+
+      setError(
+        err?.message ??
+          "Something went wrong."
+      );
     } finally {
       setLoading(false);
     }
   };
 
-  const handleSaveVerifiedProfile = async (): Promise<void> => {
+  const updateStringContent = (
+    sectionIndex: number,
+    contentIndex: number,
+    value: string
+  ) => {
     if (!parsedData) return;
+
+    const updated = structuredClone(
+      parsedData
+    );
+
+    updated.sections[sectionIndex].content[
+      contentIndex
+    ] = value;
+
+    setParsedData(updated);
+  };
+
+  const addNewSection = () => {
+    if (!parsedData) return;
+
+    const updated = structuredClone(
+      parsedData
+    );
+
+    updated.sections.push({
+      id: crypto.randomUUID(),
+      title: "New Section",
+      type: "custom",
+      content: [],
+      raw_text: "",
+    });
+
+    setParsedData(updated);
+  };
+
+  const addNewObject = (
+    sectionIndex: number
+  ) => {
+    if (!parsedData) return;
+
+    const updated = structuredClone(
+      parsedData
+    );
+
+    updated.sections[
+      sectionIndex
+    ].content.push({
+      title: "",
+      subtitle: "",
+      duration: "",
+      bullets: [],
+    });
+
+    setParsedData(updated);
+  };
+
+  const handleSave = async () => {
+    if (!parsedData) return;
+
+    setSaving(true);
+
     try {
-      const token = localStorage.getItem("token");
-      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/resume/rectify`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(parsedData),
-      });
-      if (res.ok) {
-        navigate({ to: "/" });
+      const token =
+        localStorage.getItem("token");
+
+      const res = await fetch(
+        `${import.meta.env.VITE_API_BASE_URL}/api/resume/rectify`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type":
+              "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(parsedData),
+        }
+      );
+
+      if (!res.ok) {
+        throw new Error(
+          "Failed to save profile."
+        );
       }
-    } catch (err) {
+
+      navigate({ to: "/" });
+    } catch (err: any) {
       console.error(err);
+
+      setError(
+        err?.message ??
+          "Unable to save profile."
+      );
+    } finally {
+      setSaving(false);
     }
   };
 
   return (
-    <main className="min-h-[calc(100vh-5rem)] px-6 py-16 lg:py-20">
-      <div className="mx-auto max-w-4xl">
-        <header className="mb-14">
-          <span className="kicker">Chapter I · Master profile</span>
-          <h1 className="mt-4 font-serif text-4xl font-medium leading-tight text-foreground lg:text-5xl">
-            Establish the canonical you.
-          </h1>
-          <p className="mt-5 max-w-2xl text-[15px] leading-relaxed text-muted-foreground">
-            Upload a single résumé. Nexus will read it carefully and present its understanding
-            for your review — nothing is saved until you confirm.
-          </p>
-          <div className="rule mt-10 max-w-xs" />
-        </header>
+    <main className="min-h-screen px-6 py-16">
+      <div className="mx-auto max-w-5xl">
 
         {!parsedData ? (
-          <form onSubmit={handleUpload} className="paper-card p-12 text-center">
-            <p className="kicker justify-center">Accepted format · PDF</p>
-            <h2 className="mt-6 font-serif text-2xl font-medium text-foreground">
-              Choose your résumé
-            </h2>
-            <p className="mt-3 text-sm text-muted-foreground">
-              A single document, in its current form.
-            </p>
+          <form
+            onSubmit={handleUpload}
+            className="paper-card p-12 text-center"
+          >
+            <h1 className="font-serif text-4xl">
+              Upload Resume
+            </h1>
 
-            <div className="my-10 flex justify-center">
+            <div className="my-10">
               <input
                 type="file"
                 accept=".pdf"
-                onChange={(e) => setFile(e.target.files ? e.target.files[0] : null)}
-                className="text-sm text-muted-foreground file:mr-4 file:rounded-md file:border file:border-border file:bg-secondary file:px-4 file:py-2.5 file:text-sm file:font-medium file:text-foreground hover:file:bg-accent"
+                onChange={(e) =>
+                  setFile(
+                    e.target.files?.[0] ??
+                      null
+                  )
+                }
               />
             </div>
 
-            <button type="submit" disabled={loading || !file} className="btn-ink min-w-[14rem]">
-              {loading ? "Reading manuscript…" : "Upload & parse"}
+            {error && (
+              <p className="mb-6 text-red-500">
+                {error}
+              </p>
+            )}
+
+            <button
+              disabled={!file || loading}
+              className="btn-ink"
+            >
+              {loading
+                ? "Parsing..."
+                : "Upload Resume"}
             </button>
           </form>
         ) : (
-          <div className="paper-card p-10 lg:p-12">
-            <div className="mb-10">
-              <span className="kicker">Chapter II · Verification</span>
-              <h2 className="mt-4 font-serif text-3xl font-medium text-foreground">
-                Review the reading.
+          <div className="space-y-12">
+
+            {/* BASICS */}
+
+            <section className="paper-card p-8 space-y-5">
+
+              <h2 className="font-serif text-3xl">
+                Personal Information
               </h2>
-              <p className="mt-3 text-sm text-muted-foreground">
-                Adjust anything that doesn't ring true. Your edits become the source of record.
-              </p>
-            </div>
 
-            <div className="space-y-10">
-              <div>
-                <label className="kicker mb-3 block">Professional summary</label>
-                <textarea
-                  value={parsedData.summary}
-                  onChange={(e) => setParsedData({ ...parsedData, summary: e.target.value })}
-                  rows={6}
-                  className="field"
-                />
+              <input
+                className="field"
+                value={
+                  parsedData.basics
+                    .full_name
+                }
+                placeholder="Full name"
+              />
+
+              <input
+                className="field"
+                value={
+                  parsedData.basics
+                    .headline
+                }
+                placeholder="Headline"
+              />
+
+              <input
+                className="field"
+                value={
+                  parsedData.basics
+                    .location
+                }
+                placeholder="Location"
+              />
+            </section>
+
+            {/* SECTIONS */}
+
+            {parsedData.sections.map(
+              (section, sectionIndex) => (
+                <section
+                  key={section.id}
+                  className="paper-card p-8 space-y-8"
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="kicker">
+                        {section.type}
+                      </p>
+
+                      <h2 className="mt-2 font-serif text-3xl">
+                        {section.title}
+                      </h2>
+                    </div>
+
+                    <button
+                      onClick={() =>
+                        addNewObject(
+                          sectionIndex
+                        )
+                      }
+                      className="btn-ink flex items-center gap-2"
+                    >
+                      <Plus size={16} />
+                      Add Item
+                    </button>
+                  </div>
+
+                  {/* CONTENT */}
+
+                  <div className="space-y-6">
+
+                    {section.content.map(
+                      (
+                        item,
+                        contentIndex
+                      ) => {
+
+                        // STRING TAGS
+
+                        if (
+                          typeof item ===
+                          "string"
+                        ) {
+                          return (
+                            <input
+                              key={
+                                contentIndex
+                              }
+                              value={item}
+                              onChange={(
+                                e
+                              ) =>
+                                updateStringContent(
+                                  sectionIndex,
+                                  contentIndex,
+                                  e.target
+                                    .value
+                                )
+                              }
+                              className="field"
+                            />
+                          );
+                        }
+
+                        // OBJECTS
+
+                        if (
+                          typeof item ===
+                            "object" &&
+                          item
+                        ) {
+                          return (
+                            <div
+                              key={
+                                contentIndex
+                              }
+                              className="rounded-2xl border border-border p-6 space-y-4"
+                            >
+                              {Object.entries(
+                                item
+                              ).map(
+                                ([
+                                  key,
+                                  value,
+                                ]) => {
+
+                                  if (
+                                    Array.isArray(
+                                      value
+                                    )
+                                  ) {
+                                    return (
+                                      <textarea
+                                        key={
+                                          key
+                                        }
+                                        value={value.join(
+                                          "\n"
+                                        )}
+                                        className="field min-h-[120px]"
+                                      />
+                                    );
+                                  }
+
+                                  return (
+                                    <input
+                                      key={
+                                        key
+                                      }
+                                      value={String(
+                                        value ??
+                                          ""
+                                      )}
+                                      className="field"
+                                    />
+                                  );
+                                }
+                              )}
+                            </div>
+                          );
+                        }
+
+                        return null;
+                      }
+                    )}
+                  </div>
+                </section>
+              )
+            )}
+
+            {/* ADD SECTION */}
+
+            <button
+              onClick={addNewSection}
+              className="btn-ink flex items-center gap-2"
+            >
+              <Plus size={18} />
+              Add New Section
+            </button>
+
+            {/* ERROR */}
+
+            {error && (
+              <div className="rounded-xl border border-red-300 bg-red-50 px-5 py-4 text-red-700">
+                {error}
               </div>
+            )}
 
-              <div>
-                <label className="kicker mb-3 block">Core technical skills</label>
-                <input
-                  type="text"
-                  value={parsedData.skills.join(", ")}
-                  onChange={(e) =>
-                    setParsedData({ ...parsedData, skills: e.target.value.split(", ") })
-                  }
-                  className="field"
-                />
-                <p className="mt-2 text-xs text-muted-foreground">
-                  Separate each skill with a comma and a space.
-                </p>
-              </div>
-            </div>
+            {/* SAVE */}
 
-            <div className="rule my-10" />
-
-            <button onClick={handleSaveVerifiedProfile} className="btn-ink w-full">
-              Confirm & lock master profile
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className="btn-ink w-full"
+            >
+              {saving
+                ? "Saving..."
+                : "Save Profile"}
             </button>
           </div>
         )}
@@ -149,3 +498,9 @@ function ProfileSetupPage() {
     </main>
   );
 }
+
+function structuredClone<T>(obj: T): T {
+  return JSON.parse(JSON.stringify(obj));
+}
+
+export default ProfileSetupPage;

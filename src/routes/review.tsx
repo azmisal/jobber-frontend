@@ -167,16 +167,19 @@ function ReviewChangesPage() {
                       </div>
 
                       <div className="grid gap-6 lg:grid-cols-2">
+                        <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+                            {prop.section_id} Section
+                          </p>
                         <div className="border-l border-destructive/40 pl-5">
                           <span className="kicker !text-destructive/80">Before</span>
                           <p className="mt-3 text-sm leading-relaxed text-muted-foreground line-through">
-                            {prop.original_line}
+                            {prop.original_text}
                           </p>
                         </div>
                         <div className="border-l-2 border-[var(--color-gold)] pl-5">
                           <span className="kicker">After</span>
                           <p className="mt-3 text-sm leading-relaxed text-foreground">
-                            {prop.proposed_line}
+                            {prop.proposed_text}
                           </p>
                         </div>
                       </div>
