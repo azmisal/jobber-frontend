@@ -1,5 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import axios from "axios";
 import RequireAuth from "@/components/RequireAuth";
 import type { LocationState, OptimizationProposal, OptimizationResult } from "@/types";
 
@@ -46,26 +47,68 @@ function ReviewChangesPage() {
     setLoading(true);
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/optimize/apply`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
+
+      const res = await axios.post<OptimizationResult>(
+
+        `${import.meta.env.VITE_API_BASE_URL}/api/optimize/apply`,
+        {
           approved_ids: approvedIds,
           proposals: proposals,
           output_file_name: outputFileName,
-        }),
-      });
-      const data: OptimizationResult = await res.json();
-      setResult(data);
+        },
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      );
+
+      setResult(res.data);
+      console.log("Optimization result: ", result);
     } catch (err) {
       console.error(err);
     } finally {
       setLoading(false);
     }
   };
+
+  const handleDownload = async (): Promise<void> => {
+    try {
+      const response = await axios.get(result?.download_url || "", {
+        responseType: 'blob',
+      });
+
+      const blob = new Blob([response.data], {
+        type: 'application/pdf',
+      });
+
+      const blobUrl = window.URL.createObjectURL(blob);
+
+      const link = document.createElement('a');
+
+      link.href = blobUrl;
+
+      // IMPORTANT
+      link.setAttribute(
+        'download',
+        result?.file_name.endsWith('.pdf')
+          ? result.file_name
+          : `resume.pdf`
+      );
+
+      document.body.appendChild(link);
+
+      link.click();
+
+      link.remove();
+
+      window.URL.revokeObjectURL(blobUrl);
+
+    } catch (error) {
+      console.error('Download failed:', error);
+    }
+  }
 
   return (
     <main className="min-h-[calc(100vh-5rem)] px-6 py-16 lg:py-20">
@@ -103,9 +146,8 @@ function ReviewChangesPage() {
                   return (
                     <article
                       key={prop.id}
-                      className={`paper-card p-8 transition-colors ${
-                        isApproved ? "" : "opacity-60"
-                      }`}
+                      className={`paper-card p-8 transition-colors ${isApproved ? "" : "opacity-60"
+                        }`}
                     >
                       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-baseline sm:justify-between">
                         <div className="flex items-baseline gap-4">
@@ -181,14 +223,13 @@ function ReviewChangesPage() {
                 Your résumé variant has been compiled and is ready for download.
               </p>
 
-              <a
-                href={result.download_url}
-                target="_blank"
+              <button
+                onClick={handleDownload}
                 rel="noreferrer"
                 className="btn-ink mt-6 w-full"
               >
-                Download résumé PDF
-              </a>
+                Download resume PDF
+              </button>
               <button onClick={() => navigate({ to: "/" })} className="btn-ghost mt-3 w-full">
                 Return to atelier
               </button>
