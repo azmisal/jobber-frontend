@@ -24,6 +24,7 @@ export interface OptimizationProposal {
 
 export interface OptimizationResult {
   message: string;
+  file_name: string;
   download_url: string;
   cover_letter: string;
 }
