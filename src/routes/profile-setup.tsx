@@ -52,7 +52,17 @@ function normalizeResumeData(data: any): ResumeData {
     },
 
     sections: Array.isArray(data?.sections)
-      ? data.sections
+      ? data.sections.map((section: any) => ({
+          id: section?.id ?? crypto.randomUUID(),
+          title: section?.title ?? "Untitled Section",
+          type: section?.type ?? "custom",
+          content: Array.isArray(section?.content)
+            ? section.content
+            : typeof section?.content === "string"
+            ? [section.content]
+            : [],
+          raw_text: section?.raw_text ?? "",
+        }))
       : [],
 
     metadata: data?.metadata ?? {
@@ -60,33 +70,21 @@ function normalizeResumeData(data: any): ResumeData {
       parsing_confidence: 0,
     },
 
-    raw_resume_text:
-      data?.raw_resume_text ?? "",
+    raw_resume_text: data?.raw_resume_text ?? "",
   };
 }
 
 function ProfileSetupPage() {
   const navigate = useNavigate();
 
-  const [file, setFile] =
-    useState<File | null>(null);
-
-  const [loading, setLoading] =
-    useState(false);
-
-  const [saving, setSaving] =
-    useState(false);
-
+  const [file, setFile] = useState<File | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [parsedData, setParsedData] = useState<ResumeData | null>(null);
 
-  const [parsedData, setParsedData] =
-    useState<ResumeData | null>(null);
-
-  const handleUpload = async (
-    e: React.FormEvent<HTMLFormElement>
-  ) => {
+  const handleUpload = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-
     setError("");
 
     if (!file) {
@@ -97,16 +95,13 @@ function ProfileSetupPage() {
     setLoading(true);
 
     try {
-      const token =
-        localStorage.getItem("token");
-
+      const token = localStorage.getItem("token");
       if (!token) {
         navigate({ to: "/login" });
         return;
       }
 
       const formData = new FormData();
-
       formData.append("file", file);
 
       const res = await fetch(
@@ -122,33 +117,19 @@ function ProfileSetupPage() {
 
       const data = await res.json();
 
-      if (!res.ok) {
-        throw new Error(
-          data?.detail ??
-            "Resume upload failed."
-        );
-      }
+      if (!res.ok) throw new Error(data?.detail ?? "Resume upload failed.");
+      if (!data?.profile) throw new Error("No parsed data returned.");
 
-      if (!data?.profile) {
-        throw new Error(
-          "No parsed data returned."
-        );
-      }
-
-      setParsedData(
-        normalizeResumeData(data.profile)
-      );
+      setParsedData(normalizeResumeData(data.profile));
     } catch (err: any) {
-      console.error(err);
-
-      setError(
-        err?.message ??
-          "Something went wrong."
-      );
+      setError(err?.message ?? "Something went wrong.");
     } finally {
       setLoading(false);
     }
   };
+
+  const structuredClone = <T,>(obj: T): T =>
+    JSON.parse(JSON.stringify(obj));
 
   const updateStringContent = (
     sectionIndex: number,
@@ -157,23 +138,28 @@ function ProfileSetupPage() {
   ) => {
     if (!parsedData) return;
 
-    const updated = structuredClone(
-      parsedData
-    );
+    const updated = structuredClone(parsedData);
+    updated.sections[sectionIndex].content[contentIndex] = value;
+    setParsedData(updated);
+  };
 
-    updated.sections[sectionIndex].content[
-      contentIndex
-    ] = value;
+  const updateObjectField = (
+    sectionIndex: number,
+    contentIndex: number,
+    key: string,
+    value: any
+  ) => {
+    if (!parsedData) return;
 
+    const updated = structuredClone(parsedData);
+    updated.sections[sectionIndex].content[contentIndex][key] = value;
     setParsedData(updated);
   };
 
   const addNewSection = () => {
     if (!parsedData) return;
 
-    const updated = structuredClone(
-      parsedData
-    );
+    const updated = structuredClone(parsedData);
 
     updated.sections.push({
       id: crypto.randomUUID(),
@@ -186,18 +172,12 @@ function ProfileSetupPage() {
     setParsedData(updated);
   };
 
-  const addNewObject = (
-    sectionIndex: number
-  ) => {
+  const addNewObject = (sectionIndex: number) => {
     if (!parsedData) return;
 
-    const updated = structuredClone(
-      parsedData
-    );
+    const updated = structuredClone(parsedData);
 
-    updated.sections[
-      sectionIndex
-    ].content.push({
+    updated.sections[sectionIndex].content.push({
       title: "",
       subtitle: "",
       duration: "",
@@ -213,36 +193,25 @@ function ProfileSetupPage() {
     setSaving(true);
 
     try {
-      const token =
-        localStorage.getItem("token");
+      const token = localStorage.getItem("token");
 
       const res = await fetch(
         `${import.meta.env.VITE_API_BASE_URL}/api/resume/rectify`,
         {
           method: "PUT",
           headers: {
-            "Content-Type":
-              "application/json",
+            "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify(parsedData),
         }
       );
 
-      if (!res.ok) {
-        throw new Error(
-          "Failed to save profile."
-        );
-      }
+      if (!res.ok) throw new Error("Failed to save profile.");
 
       navigate({ to: "/" });
     } catch (err: any) {
-      console.error(err);
-
-      setError(
-        err?.message ??
-          "Unable to save profile."
-      );
+      setError(err?.message ?? "Unable to save profile.");
     } finally {
       setSaving(false);
     }
@@ -253,227 +222,165 @@ function ProfileSetupPage() {
       <div className="mx-auto max-w-5xl">
 
         {!parsedData ? (
-          <form
-            onSubmit={handleUpload}
-            className="paper-card p-12 text-center"
-          >
-            <h1 className="font-serif text-4xl">
-              Upload Resume
-            </h1>
+          <form onSubmit={handleUpload} className="paper-card p-12 text-center">
+            <h1 className="font-serif text-4xl">Upload Resume</h1>
 
             <div className="my-10">
               <input
                 type="file"
                 accept=".pdf"
                 onChange={(e) =>
-                  setFile(
-                    e.target.files?.[0] ??
-                      null
-                  )
+                  setFile(e.target.files?.[0] ?? null)
                 }
               />
             </div>
 
-            {error && (
-              <p className="mb-6 text-red-500">
-                {error}
-              </p>
-            )}
+            {error && <p className="mb-6 text-red-500">{error}</p>}
 
-            <button
-              disabled={!file || loading}
-              className="btn-ink"
-            >
-              {loading
-                ? "Parsing..."
-                : "Upload Resume"}
+            <button disabled={!file || loading} className="btn-ink">
+              {loading ? "Parsing..." : "Upload Resume"}
             </button>
           </form>
         ) : (
           <div className="space-y-12">
 
             {/* BASICS */}
-
             <section className="paper-card p-8 space-y-5">
-
-              <h2 className="font-serif text-3xl">
-                Personal Information
-              </h2>
+              <h2 className="font-serif text-3xl">Personal Information</h2>
 
               <input
                 className="field"
-                value={
-                  parsedData.basics
-                    .full_name
+                value={parsedData.basics.full_name}
+                onChange={(e) =>
+                  setParsedData((prev) => ({
+                    ...prev!,
+                    basics: { ...prev!.basics, full_name: e.target.value },
+                  }))
                 }
                 placeholder="Full name"
               />
 
               <input
                 className="field"
-                value={
-                  parsedData.basics
-                    .headline
+                value={parsedData.basics.headline}
+                onChange={(e) =>
+                  setParsedData((prev) => ({
+                    ...prev!,
+                    basics: { ...prev!.basics, headline: e.target.value },
+                  }))
                 }
                 placeholder="Headline"
               />
 
               <input
                 className="field"
-                value={
-                  parsedData.basics
-                    .location
+                value={parsedData.basics.location}
+                onChange={(e) =>
+                  setParsedData((prev) => ({
+                    ...prev!,
+                    basics: { ...prev!.basics, location: e.target.value },
+                  }))
                 }
                 placeholder="Location"
               />
             </section>
 
             {/* SECTIONS */}
-
-            {parsedData.sections.map(
-              (section, sectionIndex) => (
-                <section
-                  key={section.id}
-                  className="paper-card p-8 space-y-8"
-                >
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="kicker">
-                        {section.type}
-                      </p>
-
-                      <h2 className="mt-2 font-serif text-3xl">
-                        {section.title}
-                      </h2>
-                    </div>
-
-                    <button
-                      onClick={() =>
-                        addNewObject(
-                          sectionIndex
-                        )
-                      }
-                      className="btn-ink flex items-center gap-2"
-                    >
-                      <Plus size={16} />
-                      Add Item
-                    </button>
+            {parsedData.sections.map((section, sectionIndex) => (
+              <section key={section.id} className="paper-card p-8 space-y-8">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <p className="kicker">{section.type}</p>
+                    <h2 className="mt-2 font-serif text-3xl">
+                      {section.title}
+                    </h2>
                   </div>
 
-                  {/* CONTENT */}
+                  <button
+                    onClick={() => addNewObject(sectionIndex)}
+                    className="btn-ink flex items-center gap-2"
+                  >
+                    <Plus size={16} />
+                    Add Item
+                  </button>
+                </div>
 
-                  <div className="space-y-6">
+                <div className="space-y-6">
+                  {section.content.map((item, contentIndex) => {
+                    if (typeof item === "string") {
+                      return (
+                        <input
+                          key={contentIndex}
+                          value={item}
+                          onChange={(e) =>
+                            updateStringContent(
+                              sectionIndex,
+                              contentIndex,
+                              e.target.value
+                            )
+                          }
+                          className="field"
+                        />
+                      );
+                    }
 
-                    {section.content.map(
-                      (
-                        item,
-                        contentIndex
-                      ) => {
-
-                        // STRING TAGS
-
-                        if (
-                          typeof item ===
-                          "string"
-                        ) {
-                          return (
-                            <input
-                              key={
-                                contentIndex
-                              }
-                              value={item}
-                              onChange={(
-                                e
-                              ) =>
-                                updateStringContent(
-                                  sectionIndex,
-                                  contentIndex,
-                                  e.target
-                                    .value
-                                )
-                              }
-                              className="field"
-                            />
-                          );
-                        }
-
-                        // OBJECTS
-
-                        if (
-                          typeof item ===
-                            "object" &&
-                          item
-                        ) {
-                          return (
-                            <div
-                              key={
-                                contentIndex
-                              }
-                              className="rounded-2xl border border-border p-6 space-y-4"
-                            >
-                              {Object.entries(
-                                item
-                              ).map(
-                                ([
-                                  key,
-                                  value,
-                                ]) => {
-
-                                  if (
-                                    Array.isArray(
-                                      value
+                    if (typeof item === "object" && item) {
+                      return (
+                        <div
+                          key={contentIndex}
+                          className="rounded-2xl border border-border p-6 space-y-4"
+                        >
+                          {Object.entries(item).map(([key, value]) => {
+                            if (Array.isArray(value)) {
+                              return (
+                                <textarea
+                                  key={key}
+                                  value={value.join("\n")}
+                                  onChange={(e) =>
+                                    updateObjectField(
+                                      sectionIndex,
+                                      contentIndex,
+                                      key,
+                                      e.target.value
+                                        .split("\n")
+                                        .filter(Boolean)
                                     )
-                                  ) {
-                                    return (
-                                      <textarea
-                                        key={
-                                          key
-                                        }
-                                        value={value.join(
-                                          "\n"
-                                        )}
-                                        className="field min-h-[120px]"
-                                      />
-                                    );
                                   }
+                                  className="field min-h-[120px]"
+                                />
+                              );
+                            }
 
-                                  return (
-                                    <input
-                                      key={
-                                        key
-                                      }
-                                      value={String(
-                                        value ??
-                                          ""
-                                      )}
-                                      className="field"
-                                    />
-                                  );
+                            return (
+                              <input
+                                key={key}
+                                value={String(value ?? "")}
+                                onChange={(e) =>
+                                  updateObjectField(
+                                    sectionIndex,
+                                    contentIndex,
+                                    key,
+                                    e.target.value
+                                  )
                                 }
-                              )}
-                            </div>
-                          );
-                        }
+                                className="field"
+                              />
+                            );
+                          })}
+                        </div>
+                      );
+                    }
 
-                        return null;
-                      }
-                    )}
-                  </div>
-                </section>
-              )
-            )}
+                    return null;
+                  })}
+                </div>
+              </section>
+            ))}
 
-            {/* ADD SECTION */}
-
-            <button
-              onClick={addNewSection}
-              className="btn-ink flex items-center gap-2"
-            >
+            <button onClick={addNewSection} className="btn-ink flex items-center gap-2">
               <Plus size={18} />
               Add New Section
             </button>
-
-            {/* ERROR */}
 
             {error && (
               <div className="rounded-xl border border-red-300 bg-red-50 px-5 py-4 text-red-700">
@@ -481,26 +388,14 @@ function ProfileSetupPage() {
               </div>
             )}
 
-            {/* SAVE */}
-
-            <button
-              onClick={handleSave}
-              disabled={saving}
-              className="btn-ink w-full"
-            >
-              {saving
-                ? "Saving..."
-                : "Save Profile"}
+            <button onClick={handleSave} disabled={saving} className="btn-ink w-full">
+              {saving ? "Saving..." : "Save Profile"}
             </button>
           </div>
         )}
       </div>
     </main>
   );
-}
-
-function structuredClone<T>(obj: T): T {
-  return JSON.parse(JSON.stringify(obj));
 }
 
 export default ProfileSetupPage;
