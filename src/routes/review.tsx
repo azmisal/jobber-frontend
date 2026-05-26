@@ -47,7 +47,7 @@ function ReviewChangesPage() {
     setLoading(true);
     try {
       const token = localStorage.getItem("token");
-
+      const model = localStorage.getItem("llmModel") || "groq";
       const res = await axios.post<OptimizationResult>(
 
         `${import.meta.env.VITE_API_BASE_URL}/api/optimize/apply`,
@@ -55,6 +55,7 @@ function ReviewChangesPage() {
           approved_ids: approvedIds,
           proposals: proposals,
           output_file_name: outputFileName,
+          model: model
         },
         {
           headers: {

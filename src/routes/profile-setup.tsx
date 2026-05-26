@@ -53,16 +53,16 @@ function normalizeResumeData(data: any): ResumeData {
 
     sections: Array.isArray(data?.sections)
       ? data.sections.map((section: any) => ({
-          id: section?.id ?? crypto.randomUUID(),
-          title: section?.title ?? "Untitled Section",
-          type: section?.type ?? "custom",
-          content: Array.isArray(section?.content)
-            ? section.content
-            : typeof section?.content === "string"
+        id: section?.id ?? crypto.randomUUID(),
+        title: section?.title ?? "Untitled Section",
+        type: section?.type ?? "custom",
+        content: Array.isArray(section?.content)
+          ? section.content
+          : typeof section?.content === "string"
             ? [section.content]
             : [],
-          raw_text: section?.raw_text ?? "",
-        }))
+        raw_text: section?.raw_text ?? "",
+      }))
       : [],
 
     metadata: data?.metadata ?? {
@@ -104,6 +104,10 @@ function ProfileSetupPage() {
       const formData = new FormData();
       formData.append("file", file);
 
+      const model = localStorage.getItem("llmModel") || "groq";
+      const formDataWithModel = new FormData();
+      formDataWithModel.append("file", file);
+      formDataWithModel.append("model", model);
       const res = await fetch(
         `${import.meta.env.VITE_API_BASE_URL}/api/resume/upload`,
         {
@@ -111,13 +115,18 @@ function ProfileSetupPage() {
           headers: {
             Authorization: `Bearer ${token}`,
           },
-          body: formData,
+          body: formDataWithModel,
         }
       );
 
       const data = await res.json();
 
-      if (!res.ok) throw new Error(data?.detail ?? "Resume upload failed.");
+      if (!res.ok) {
+        if (data?.detail?.toLowerCase().includes("token") || data?.detail?.toLowerCase().includes("free tier")) {
+          alert("The free tier for this model has ended or tokens are exhausted. Please change the model in the navbar to continue.");
+        }
+        throw new Error(data?.detail ?? "Resume upload failed.");
+      }
       if (!data?.profile) throw new Error("No parsed data returned.");
 
       setParsedData(normalizeResumeData(data.profile));
@@ -195,6 +204,8 @@ function ProfileSetupPage() {
     try {
       const token = localStorage.getItem("token");
 
+
+      const model = localStorage.getItem("llmModel") || "groq";
       const res = await fetch(
         `${import.meta.env.VITE_API_BASE_URL}/api/resume/rectify`,
         {
@@ -203,11 +214,17 @@ function ProfileSetupPage() {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify(parsedData),
+          body: JSON.stringify({ ...parsedData, model }),
         }
       );
 
-      if (!res.ok) throw new Error("Failed to save profile.");
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        if (data?.detail?.toLowerCase().includes("token") || data?.detail?.toLowerCase().includes("free tier")) {
+          alert("The free tier for this model has ended or tokens are exhausted. Please change the model in the navbar to continue.");
+        }
+        throw new Error("Failed to save profile.");
+      }
 
       navigate({ to: "/" });
     } catch (err: any) {
