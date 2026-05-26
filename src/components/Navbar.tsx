@@ -1,12 +1,11 @@
 import { useEffect, useState } from "react";
 import { LLM_MODELS } from "@/constants/llmModels";
-import { Link, useLocation, useNavigate, useRouter } from "@tanstack/react-router";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Menu, X } from "lucide-react";
 
 export default function Navbar() {
   const navigate = useNavigate();
   const location = useLocation();
-  const router = useRouter();
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [token, setToken] = useState<string | null>(null);
@@ -37,7 +36,7 @@ export default function Navbar() {
       localStorage.removeItem("userId");
     }
     setToken(null);
-    navigate({ to: "/login" });
+    navigate("/login");
   };
 
   const navLinks = [
@@ -53,7 +52,7 @@ export default function Navbar() {
         {/* Logo */}
         <button
           type="button"
-          onClick={() => navigate({ to: "/" })}
+          onClick={() => navigate("/")}
           className="flex items-baseline gap-3"
         >
           <span className="font-serif text-2xl font-semibold tracking-tight text-foreground">
