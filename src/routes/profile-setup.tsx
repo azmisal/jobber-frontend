@@ -35,6 +35,11 @@ interface ResumeData {
   metadata: {
     section_order: string[];
     parsing_confidence: number;
+    embedded_links?: {
+      label: string;
+      url: string;
+    }[];
+    plain_resume_text?: string;
   };
 
   raw_resume_text: string;
@@ -68,6 +73,8 @@ function normalizeResumeData(data: any): ResumeData {
     metadata: data?.metadata ?? {
       section_order: [],
       parsing_confidence: 0,
+      embedded_links: [],
+      plain_resume_text: "",
     },
 
     raw_resume_text: data?.raw_resume_text ?? "",
@@ -242,10 +249,19 @@ function ProfileSetupPage() {
           <form onSubmit={handleUpload} className="paper-card p-12 text-center">
             <h1 className="font-serif text-4xl">Upload Resume</h1>
 
-            <div className="my-10">
+            <div className="my-8">
               <input
                 type="file"
                 accept=".pdf"
+                className="
+                file:bg-gray-300 
+                file:rounded-lg
+                file:border-0
+                file:px-2
+                file:py-2
+                file:mr-4
+                file:cursor-pointer
+                "
                 onChange={(e) =>
                   setFile(e.target.files?.[0] ?? null)
                 }

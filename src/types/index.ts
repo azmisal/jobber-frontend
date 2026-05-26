@@ -179,6 +179,10 @@ export interface ResumeMetadata {
    * Optional parser confidence
    */
   parsing_confidence: number;
+
+  embedded_links?: ResumeLink[];
+
+  plain_resume_text?: string;
 }
 
 /* =========================================================
