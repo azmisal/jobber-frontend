@@ -48,16 +48,23 @@ function DashboardPage() {
     if (!jd.trim()) return;
     setLoading(true);
     try {
+
       const token = localStorage.getItem("token");
+      const model = localStorage.getItem("llmModel") || "groq";
+
       const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/optimize/keywords`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ job_description: jd }),
+        body: JSON.stringify({ job_description: jd, model: model }),
       });
       const data = await res.json();
+      if (!res.ok && (data?.detail?.toLowerCase().includes("token") || data?.detail?.toLowerCase().includes("free tier"))) {
+        alert("The free tier for this model has ended or tokens are exhausted. Please change the model in the navbar to continue.");
+        return;
+      }
       const extractedKws: string[] = data.keywords || [];
       setKeywords(extractedKws);
       setSelectedKeywords(extractedKws);
@@ -84,6 +91,7 @@ function DashboardPage() {
     setLoading(true);
     try {
       const token = localStorage.getItem("token");
+      const model = localStorage.getItem("llmModel") || "groq";
       const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/optimize/proposals`, {
         method: "POST",
         headers: {
@@ -92,10 +100,14 @@ function DashboardPage() {
         },
         body: JSON.stringify({
           selected_keywords: selectedKeywords,
-          rejected_keywords: keywords.filter((k) => !selectedKeywords.includes(k)),
+          model: model,
         }),
       });
       const data = await res.json();
+      if (!res.ok && (data?.detail?.toLowerCase().includes("token") || data?.detail?.toLowerCase().includes("free tier"))) {
+        alert("The free tier for this model has ended or tokens are exhausted. Please change the model in the navbar to continue.");
+        return;
+      }
       // Preserve original behavior: pass proposals + filename to /review.
       sessionStorage.setItem(
         "nexus:review",
