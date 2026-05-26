@@ -11,6 +11,16 @@ export const Route = createFileRoute("/profile-setup")({
   ),
 });
 
+type ResumeValue =
+  | string
+  | number
+  | boolean
+  | null
+  | ResumeValue[]
+  | { [key: string]: ResumeValue };
+
+type ResumeObject = { [key: string]: ResumeValue };
+
 interface ResumeData {
   basics: {
     full_name: string;
@@ -22,13 +32,14 @@ interface ResumeData {
       label: string;
       url: string;
     }[];
+    [key: string]: ResumeValue;
   };
 
   sections: {
     id: string;
     title: string;
     type: string;
-    content: any[];
+    content: ResumeValue[];
     raw_text: string;
   }[];
 
@@ -45,40 +56,221 @@ interface ResumeData {
   raw_resume_text: string;
 }
 
-function normalizeResumeData(data: any): ResumeData {
+function normalizeDynamicValue(value: unknown): ResumeValue {
+  if (value === null || value === undefined) return "";
+
+  if (
+    typeof value === "string" ||
+    typeof value === "number" ||
+    typeof value === "boolean"
+  ) {
+    return value;
+  }
+
+  if (Array.isArray(value)) {
+    return value.map(normalizeDynamicValue);
+  }
+
+  if (typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>).map(([key, child]) => [
+        key,
+        normalizeDynamicValue(child),
+      ])
+    );
+  }
+
+  return String(value);
+}
+
+function normalizeStringList(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return value.map((item) => String(item ?? "")).filter(Boolean);
+  }
+
+  if (typeof value === "string" && value.trim()) return [value.trim()];
+
+  return [];
+}
+
+function normalizeLinks(value: unknown): { label: string; url: string }[] {
+  if (!Array.isArray(value)) return [];
+
+  return value
+    .map((link) => {
+      if (typeof link === "string") return { label: "", url: link };
+      if (!link || typeof link !== "object") return { label: "", url: "" };
+
+      const item = link as Record<string, unknown>;
+      return {
+        label: String(item.label ?? item.name ?? item.title ?? ""),
+        url: String(item.url ?? item.href ?? item.link ?? item.value ?? ""),
+      };
+    })
+    .filter((link) => link.label || link.url);
+}
+
+function normalizeResumeData(data: unknown): ResumeData {
+  const source =
+    data && typeof data === "object" ? (data as Record<string, any>) : {};
+  const basics =
+    source?.basics && typeof source.basics === "object"
+      ? (source.basics as Record<string, unknown>)
+      : {};
+
   return {
-    basics: data?.basics ?? {
-      full_name: "",
-      headline: "",
-      emails: [],
-      phones: [],
-      location: "",
-      links: [],
+    basics: {
+      ...Object.fromEntries(
+        Object.entries(basics).map(([key, value]) => [
+          key,
+          normalizeDynamicValue(value),
+        ])
+      ),
+      full_name: String(
+        basics.full_name ?? basics.fullName ?? basics.name ?? ""
+      ),
+      headline: String(basics.headline ?? basics.title ?? basics.role ?? ""),
+      emails: normalizeStringList(basics.emails ?? basics.email),
+      phones: normalizeStringList(basics.phones ?? basics.phone),
+      location: String(basics.location ?? basics.address ?? ""),
+      links: normalizeLinks(basics.links ?? basics.urls ?? basics.profiles),
     },
 
-    sections: Array.isArray(data?.sections)
-      ? data.sections.map((section: any) => ({
+    sections: Array.isArray(source?.sections)
+      ? source.sections.map((section: any) => ({
         id: section?.id ?? crypto.randomUUID(),
         title: section?.title ?? "Untitled Section",
         type: section?.type ?? "custom",
         content: Array.isArray(section?.content)
-          ? section.content
+          ? section.content.map(normalizeDynamicValue)
           : typeof section?.content === "string"
             ? [section.content]
+            : section?.content && typeof section.content === "object"
+              ? [normalizeDynamicValue(section.content)]
             : [],
         raw_text: section?.raw_text ?? "",
       }))
       : [],
 
-    metadata: data?.metadata ?? {
+    metadata: source?.metadata ?? {
       section_order: [],
       parsing_confidence: 0,
       embedded_links: [],
       plain_resume_text: "",
     },
 
-    raw_resume_text: data?.raw_resume_text ?? "",
+    raw_resume_text: source?.raw_resume_text ?? "",
   };
+}
+
+function isPrimitive(value: ResumeValue): value is string | number | boolean | null {
+  return (
+    value === null ||
+    typeof value === "string" ||
+    typeof value === "number" ||
+    typeof value === "boolean"
+  );
+}
+
+function emptyValueFor(label: string): ResumeValue {
+  const lower = label.toLowerCase();
+
+  if (lower.includes("link")) return { label: "", url: "" };
+
+  return "";
+}
+
+function ValueEditor({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: ResumeValue;
+  onChange: (value: ResumeValue) => void;
+}) {
+  if (Array.isArray(value)) {
+    const primitiveOnly = value.every(isPrimitive);
+
+    if (primitiveOnly) {
+      return (
+        <label className="block space-y-2">
+          <span className="kicker">{label}</span>
+          <textarea
+            value={value.map((item) => String(item ?? "")).join("\n")}
+            onChange={(e) =>
+              onChange(e.target.value.split("\n").filter(Boolean))
+            }
+            className="field min-h-[110px]"
+          />
+        </label>
+      );
+    }
+
+    return (
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <span className="kicker">{label}</span>
+          <button
+            type="button"
+            className="btn-ghost !px-3 !py-2 !text-xs"
+            onClick={() => onChange([...value, emptyValueFor(label)])}
+          >
+            Add
+          </button>
+        </div>
+        {value.map((item, index) => (
+          <div key={index} className="rounded-xl border border-border p-4">
+            <ValueEditor
+              label={`${label} ${index + 1}`}
+              value={item}
+              onChange={(next) => {
+                const updated = [...value];
+                updated[index] = next;
+                onChange(updated);
+              }}
+            />
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  if (value && typeof value === "object") {
+    const objectValue = value as ResumeObject;
+
+    return (
+      <div className="space-y-3">
+        <span className="kicker">{label}</span>
+        <div className="space-y-4 rounded-xl border border-border p-4">
+          {Object.entries(objectValue).map(([key, child]) => (
+            <ValueEditor
+              key={key}
+              label={key}
+              value={child}
+              onChange={(next) =>
+                onChange({
+                  ...objectValue,
+                  [key]: next,
+                })
+              }
+            />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <label className="block space-y-2">
+      <span className="kicker">{label}</span>
+      <input
+        value={String(value ?? "")}
+        onChange={(e) => onChange(e.target.value)}
+        className="field"
+      />
+    </label>
+  );
 }
 
 function ProfileSetupPage() {
@@ -159,16 +351,40 @@ function ProfileSetupPage() {
     setParsedData(updated);
   };
 
-  const updateObjectField = (
+  const updateContentValue = (
     sectionIndex: number,
     contentIndex: number,
-    key: string,
-    value: any
+    value: ResumeValue
   ) => {
     if (!parsedData) return;
 
     const updated = structuredClone(parsedData);
-    updated.sections[sectionIndex].content[contentIndex][key] = value;
+    updated.sections[sectionIndex].content[contentIndex] = value;
+    setParsedData(updated);
+  };
+
+  const updateObjectField = (
+    sectionIndex: number,
+    contentIndex: number,
+    key: string,
+    value: ResumeValue
+  ) => {
+    if (!parsedData) return;
+
+    const updated = structuredClone(parsedData);
+    const item = updated.sections[sectionIndex].content[contentIndex];
+
+    if (!item || typeof item !== "object" || Array.isArray(item)) return;
+
+    (item as ResumeObject)[key] = value;
+    setParsedData(updated);
+  };
+
+  const updateBasicsField = (key: string, value: ResumeValue) => {
+    if (!parsedData) return;
+
+    const updated = structuredClone(parsedData);
+    updated.basics[key] = value;
     setParsedData(updated);
   };
 
@@ -281,41 +497,14 @@ function ProfileSetupPage() {
             <section className="paper-card p-8 space-y-5">
               <h2 className="font-serif text-3xl">Personal Information</h2>
 
-              <input
-                className="field"
-                value={parsedData.basics.full_name}
-                onChange={(e) =>
-                  setParsedData((prev) => ({
-                    ...prev!,
-                    basics: { ...prev!.basics, full_name: e.target.value },
-                  }))
-                }
-                placeholder="Full name"
-              />
-
-              <input
-                className="field"
-                value={parsedData.basics.headline}
-                onChange={(e) =>
-                  setParsedData((prev) => ({
-                    ...prev!,
-                    basics: { ...prev!.basics, headline: e.target.value },
-                  }))
-                }
-                placeholder="Headline"
-              />
-
-              <input
-                className="field"
-                value={parsedData.basics.location}
-                onChange={(e) =>
-                  setParsedData((prev) => ({
-                    ...prev!,
-                    basics: { ...prev!.basics, location: e.target.value },
-                  }))
-                }
-                placeholder="Location"
-              />
+              {Object.entries(parsedData.basics).map(([key, value]) => (
+                <ValueEditor
+                  key={key}
+                  label={key}
+                  value={value}
+                  onChange={(next) => updateBasicsField(key, next)}
+                />
+              ))}
             </section>
 
             {/* SECTIONS */}
@@ -357,49 +546,65 @@ function ProfileSetupPage() {
                       );
                     }
 
+                    if (isPrimitive(item)) {
+                      return (
+                        <ValueEditor
+                          key={contentIndex}
+                          label={`${section.title} ${contentIndex + 1}`}
+                          value={item}
+                          onChange={(next) =>
+                            updateContentValue(
+                              sectionIndex,
+                              contentIndex,
+                              next
+                            )
+                          }
+                        />
+                      );
+                    }
+
+                    if (Array.isArray(item)) {
+                      return (
+                        <div
+                          key={contentIndex}
+                          className="rounded-2xl border border-border p-6"
+                        >
+                          <ValueEditor
+                            label={`${section.title} ${contentIndex + 1}`}
+                            value={item}
+                            onChange={(next) =>
+                              updateContentValue(
+                                sectionIndex,
+                                contentIndex,
+                                next
+                              )
+                            }
+                          />
+                        </div>
+                      );
+                    }
+
                     if (typeof item === "object" && item) {
                       return (
                         <div
                           key={contentIndex}
                           className="rounded-2xl border border-border p-6 space-y-4"
                         >
-                          {Object.entries(item).map(([key, value]) => {
-                            if (Array.isArray(value)) {
-                              return (
-                                <textarea
-                                  key={key}
-                                  value={value.join("\n")}
-                                  onChange={(e) =>
-                                    updateObjectField(
-                                      sectionIndex,
-                                      contentIndex,
-                                      key,
-                                      e.target.value
-                                        .split("\n")
-                                        .filter(Boolean)
-                                    )
-                                  }
-                                  className="field min-h-[120px]"
-                                />
-                              );
-                            }
-
-                            return (
-                              <input
-                                key={key}
-                                value={String(value ?? "")}
-                                onChange={(e) =>
-                                  updateObjectField(
-                                    sectionIndex,
-                                    contentIndex,
-                                    key,
-                                    e.target.value
-                                  )
-                                }
-                                className="field"
-                              />
-                            );
-                          })}
+                          {Object.entries(item).map(([key, value]) => (
+                            <ValueEditor
+                              key={key}
+                              label={key}
+                              value={value as ResumeValue}
+                              onChange={(next) =>
+                                updateObjectField(
+                                  sectionIndex,
+                                  contentIndex,
+                                  key,
+                                  next
+                                )
+                              }
+                            />
+                          ))}
                         </div>
                       );
                     }
