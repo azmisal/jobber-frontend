@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "tsc && vite build",
     "build:dev": "vite build --mode development",
     "preview": "vite preview",
     "lint": "eslint ."
@@ -50,9 +50,9 @@
     "embla-carousel-react": "^8.6.0",
     "input-otp": "^1.4.2",
     "lucide-react": "^0.575.0",
-    "react": "^19.2.0",
+    "react": "^19.2.6",
     "react-day-picker": "^9.14.0",
-    "react-dom": "^19.2.0",
+    "react-dom": "^19.2.6",
     "react-hook-form": "^7.71.2",
     "react-resizable-panels": "^4.6.5",
     "react-router-dom": "^6.26.2",
@@ -67,10 +67,10 @@
   },
   "devDependencies": {
     "@types/node": "^22.16.5",
-    "@types/react": "^19.2.0",
-    "@types/react-dom": "^19.2.0",
-    "@vitejs/plugin-react": "^5.0.4",
-    "typescript": "^5.8.3",
-    "vite": "^7.3.1"
+    "@types/react": "^19.2.15",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^5.2.0",
+    "typescript": "^5.9.3",
+    "vite": "^7.3.3"
   }
 }

@@ -1,9 +1,9 @@
 import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
-import { Plus, Pencil, Upload, X } from "lucide-react";
+import { Plus, Pencil, Upload } from "lucide-react";
 import { useProfile } from "@/context/ProfileContext";
 
-// ---------------- TYPES (UNCHANGED) ----------------
+// ---------------- TYPES ----------------
 type ResumeValue =
   | string
   | number
@@ -41,17 +41,7 @@ interface ResumeData {
   raw_resume_text: string;
 }
 
-// ---------------- HELPERS (UNCHANGED) ----------------
-function isPrimitive(value: ResumeValue): value is string | number | boolean | null {
-  return value === null || ["string", "number", "boolean"].includes(typeof value);
-}
-
-function emptyValueFor(label: string): ResumeValue {
-  if (label.toLowerCase().includes("link")) return { label: "", url: "" };
-  return "";
-}
-
-// ---------------- VALUE EDITOR (UNCHANGED LOGIC) ----------------
+// ---------------- VALUE EDITOR ----------------
 function ValueEditor({
   label,
   value,
@@ -62,6 +52,45 @@ function ValueEditor({
   onChange: (v: ResumeValue) => void;
 }) {
   if (Array.isArray(value)) {
+    // IMPORTANT: preserve array-of-objects (e.g. basics.links) instead of converting to string.
+    const isArrayOfObjects =
+      value.length > 0 &&
+      value.every(
+        (v) => v !== null && typeof v === "object" && !Array.isArray(v)
+      );
+
+    if (isArrayOfObjects) {
+      return (
+        <div className="space-y-2 border p-3 rounded-lg">
+          <span className="kicker">{label}</span>
+          {value.map((item, index) => (
+            <div
+              key={index}
+              className="space-y-2 rounded-lg border border-border p-3"
+            >
+              {Object.entries(item as ResumeObject).map(([k, v]) => (
+                <ValueEditor
+                  key={k}
+                  label={`${label}-${k}-${index}`}
+                  value={v}
+                  onChange={(next) => {
+                    const updated = [...value] as any[];
+                    updated[index] = {
+                      ...(updated[index] as any),
+                      [k]: next,
+                    };
+                    onChange(updated as any);
+                  }}
+                />
+              ))}
+            </div>
+          ))}
+
+          {/* allow adding empty object-like item if user wants */}
+        </div>
+      );
+    }
+
     return (
       <div className="space-y-2">
         <span className="kicker">{label}</span>
@@ -69,7 +98,7 @@ function ValueEditor({
           className="field min-h-[100px]"
           value={value.map(String).join("\n")}
           onChange={(e) =>
-            onChange(e.target.value.split("\n").filter(Boolean))
+            onChange(e.target.value.split("\n").filter(Boolean) as any)
           }
         />
       </div>
@@ -106,10 +135,9 @@ function ValueEditor({
 // ---------------- MAIN COMPONENT ----------------
 function ProfileSetupPage() {
   const navigate = useNavigate();
-  const { profile, hasProfile } = useProfile();
+  const { profile, hasProfile, refreshProfile } = useProfile();
 
   const [file, setFile] = useState<File | null>(null);
-
   const [parsedData, setParsedData] = useState<ResumeData | null>(null);
 
   const [viewOpen, setViewOpen] = useState(false);
@@ -120,12 +148,12 @@ function ProfileSetupPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
-  // SAFE INIT (FIXED BUG)
+  // Hydrate UI from backend-only (no temporary state) when profile exists.
   useEffect(() => {
     if (hasProfile && profile && !parsedData) {
       setParsedData(profile as ResumeData);
     }
-  }, [hasProfile, profile]);
+  }, [hasProfile, profile, parsedData]);
 
   const clone = <T,>(obj: T): T => JSON.parse(JSON.stringify(obj));
 
@@ -159,7 +187,7 @@ function ProfileSetupPage() {
       setViewOpen(true);
       setEditMode(true);
     } catch (err: any) {
-      setError(err.message);
+      setError(err?.message ?? "Upload failed");
     } finally {
       setLoading(false);
     }
@@ -170,6 +198,7 @@ function ProfileSetupPage() {
     if (!parsedData) return;
 
     setSaving(true);
+    setError("");
     try {
       const token = localStorage.getItem("token");
 
@@ -185,22 +214,26 @@ function ProfileSetupPage() {
         }
       );
 
-      if (!res.ok) throw new Error("Save failed");
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data?.detail || "Save failed");
+      }
 
+      // Refresh from backend so DB is source-of-truth
+      await refreshProfile?.();
       setEditMode(false);
     } catch (err: any) {
-      setError(err.message);
+      setError(err?.message ?? "Save failed");
     } finally {
       setSaving(false);
     }
   };
 
-  // ---------------- PROFILE CARD VIEW ----------------
+  // ---------------- STATES ----------------
   if (!parsedData && !uploadMode) {
     return (
       <main className="p-10">
         <div className="max-w-2xl mx-auto space-y-6">
-
           <div className="paper-card p-6">
             <h2 className="text-2xl font-bold">No Profile Found</h2>
             <p className="text-gray-500 mt-2">
@@ -215,17 +248,18 @@ function ProfileSetupPage() {
               New Profile
             </button>
           </div>
-
         </div>
       </main>
     );
   }
 
-  // ---------------- UPLOAD SCREEN ----------------
   if (uploadMode) {
     return (
       <main className="p-10">
-        <form onSubmit={handleUpload} className="paper-card p-8 space-y-4">
+        <form
+          onSubmit={handleUpload}
+          className="paper-card p-8 space-y-4"
+        >
           <h2 className="text-2xl">Upload Resume</h2>
 
           <input
@@ -237,7 +271,7 @@ function ProfileSetupPage() {
           {error && <p className="text-red-500">{error}</p>}
 
           <div className="flex gap-3">
-            <button className="btn-ink" disabled={loading}>
+            <button className="btn-ink" disabled={loading} type="submit">
               Upload
             </button>
 
@@ -258,9 +292,7 @@ function ProfileSetupPage() {
   return (
     <main className="p-10">
       <div className="max-w-4xl mx-auto space-y-6">
-
-        {/* TOP ACTIONS */}
-        <div className="flex justify-between">
+        <div className="flex justify-between items-center">
           <button
             onClick={() => setUploadMode(true)}
             className="btn-ink flex items-center gap-2"
@@ -280,7 +312,6 @@ function ProfileSetupPage() {
           )}
         </div>
 
-        {/* PROFILE CARD */}
         <div className="paper-card p-6">
           <div
             className="cursor-pointer"
@@ -289,19 +320,13 @@ function ProfileSetupPage() {
             <h2 className="text-xl font-bold">
               {parsedData?.basics?.full_name || "My Profile"}
             </h2>
-            <p className="text-gray-500">
-              {parsedData?.basics?.headline}
-            </p>
+            <p className="text-gray-500">{parsedData?.basics?.headline}</p>
           </div>
 
-          {/* EXPANDED VIEW */}
           {viewOpen && parsedData && (
             <div className="mt-6 space-y-6">
-
-              {/* BASICS */}
               <section className="space-y-3">
                 <h3 className="font-bold">Basics</h3>
-
                 {Object.entries(parsedData.basics).map(([k, v]) => (
                   <ValueEditor
                     key={k}
@@ -318,7 +343,6 @@ function ProfileSetupPage() {
                 ))}
               </section>
 
-              {/* SECTIONS (HIDE "model") */}
               {parsedData.sections
                 .filter((s) => s.type !== "model")
                 .map((section, i) => (
@@ -332,7 +356,6 @@ function ProfileSetupPage() {
                         value={item}
                         onChange={(val) => {
                           if (!editMode) return;
-
                           const updated = clone(parsedData);
                           updated.sections[i].content[idx] = val;
                           setParsedData(updated);
@@ -355,7 +378,6 @@ function ProfileSetupPage() {
                   </section>
                 ))}
 
-              {/* SAVE */}
               {editMode && (
                 <button
                   onClick={handleSave}
@@ -366,13 +388,18 @@ function ProfileSetupPage() {
                 </button>
               )}
 
+              {error && (
+                <div className="rounded-xl border border-red-300 bg-red-50 px-5 py-4 text-red-700">
+                  {error}
+                </div>
+              )}
             </div>
           )}
         </div>
-
       </div>
     </main>
   );
 }
 
 export default ProfileSetupPage;
+
