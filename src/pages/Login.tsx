@@ -1,9 +1,5 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
-
-export const Route = createFileRoute("/login")({
-  component: LoginPage,
-});
 
 function LoginPage() {
   const [email, setEmail] = useState<string>("");
@@ -25,7 +21,7 @@ function LoginPage() {
 
       localStorage.setItem("token", data.access_token);
       localStorage.setItem("userId", data.user_id);
-      navigate({ to: "/" });
+      navigate("/");
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "An error occurred during login.";
       setError(message);
@@ -118,3 +114,5 @@ function LoginPage() {
     </main>
   );
 }
+
+export default LoginPage;
