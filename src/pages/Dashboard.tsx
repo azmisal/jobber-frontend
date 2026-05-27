@@ -1,15 +1,5 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
-import RequireAuth from "@/components/RequireAuth";
-
-export const Route = createFileRoute("/")({
-  component: () => (
-    <RequireAuth>
-      <DashboardPage />
-    </RequireAuth>
-  ),
-});
-
 function DashboardPage() {
   const [hasProfile, setHasProfile] = useState<boolean | null>(null);
   const [jd, setJd] = useState<string>("");
@@ -35,11 +25,11 @@ function DashboardPage() {
         setHasProfile(true);
       } else {
         setHasProfile(false);
-        navigate({ to: "/profile-setup" });
+        navigate("/profile-setup");
       }
     } catch (err) {
       console.error(err);
-      navigate({ to: "/profile-setup" });
+      navigate("/profile-setup");
     }
   };
 
@@ -113,7 +103,7 @@ function DashboardPage() {
         "nexus:review",
         JSON.stringify({ proposals: data.proposals, outputFileName }),
       );
-      navigate({ to: "/review" });
+      navigate("/review");
     } catch (err) {
       console.error(err);
     } finally {
@@ -252,3 +242,5 @@ function DashboardPage() {
     </main>
   );
 }
+
+export default DashboardPage;
