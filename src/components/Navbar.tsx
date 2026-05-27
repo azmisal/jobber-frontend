@@ -1,50 +1,55 @@
 import { useEffect, useState } from "react";
-import { LLM_MODELS } from "@/constants/llmModels";
-import { Link, useLocation, useNavigate, useRouter } from "@tanstack/react-router";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Menu, X } from "lucide-react";
+import { LLM_MODELS } from "../constants/llmModels";
 
 export default function Navbar() {
   const navigate = useNavigate();
   const location = useLocation();
-  const router = useRouter();
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [token, setToken] = useState<string | null>(null);
 
-  // ✅ SSR-safe model initialization
-  const [selectedModel, setSelectedModel] = useState<string>(() => {
-    if (typeof window === "undefined") return LLM_MODELS[0].id;
-    return localStorage.getItem("llmModel") || LLM_MODELS[0].id;
-  });
+  const [selectedModel, setSelectedModel] = useState<string>(
+    LLM_MODELS[0]?.id || ""
+  );
 
-  // Save model to localStorage safely
+  // Load model from localStorage
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    localStorage.setItem("llmModel", selectedModel);
+    const savedModel = localStorage.getItem("llmModel");
+
+    if (savedModel) {
+      setSelectedModel(savedModel);
+    }
+  }, []);
+
+  // Save model
+  useEffect(() => {
+    if (selectedModel) {
+      localStorage.setItem("llmModel", selectedModel);
+    }
   }, [selectedModel]);
 
-  // No need to expose model globally; fetch logic will read from localStorage or state.
-
-  // Load token safely on route change
+  // Load token
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    setToken(localStorage.getItem("token"));
+    const storedToken = localStorage.getItem("token");
+    setToken(storedToken);
   }, [location.pathname]);
 
-  const handleLogout = (): void => {
-    if (typeof window !== "undefined") {
-      localStorage.removeItem("token");
-      localStorage.removeItem("userId");
-    }
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("userId");
+
     setToken(null);
-    navigate({ to: "/login" });
+
+    navigate("/login");
   };
 
   const navLinks = [
     { name: "Dashboard", path: "/" },
     { name: "Profile", path: "/profile-setup" },
     { name: "Review", path: "/review" },
-  ] as const;
+  ];
 
   return (
     <nav className="sticky top-0 z-50 w-full border-b border-border bg-background/85 backdrop-blur-xl">
@@ -53,33 +58,40 @@ export default function Navbar() {
         {/* Logo */}
         <button
           type="button"
-          onClick={() => navigate({ to: "/" })}
+          onClick={() => navigate("/")}
           className="flex items-baseline gap-3"
         >
           <span className="font-serif text-2xl font-semibold tracking-tight text-foreground">
             Nexus
           </span>
-          <span className="kicker !text-[0.6rem]">CV Atelier</span>
+
+          <span className="text-[0.6rem] uppercase tracking-widest text-muted-foreground">
+            CV Atelier
+          </span>
         </button>
 
-        {/* Desktop Nav */}
+        {/* Desktop Navigation */}
         {token && (
           <div className="hidden items-center gap-4 md:flex">
+
             <div className="flex items-center gap-1">
               {navLinks.map((link) => {
                 const active = location.pathname === link.path;
+
                 return (
                   <Link
                     key={link.path}
                     to={link.path}
-                    className={`relative px-4 py-2 text-sm tracking-wide transition-colors ${active
+                    className={`relative px-4 py-2 text-sm tracking-wide transition-colors ${
+                      active
                         ? "text-foreground"
                         : "text-muted-foreground hover:text-foreground"
-                      }`}
+                    }`}
                   >
                     {link.name}
+
                     {active && (
-                      <span className="absolute -bottom-0.5 left-1/2 h-px w-6 -translate-x-1/2 bg-[var(--color-gold)]" />
+                      <span className="absolute -bottom-0.5 left-1/2 h-px w-6 -translate-x-1/2 bg-yellow-500" />
                     )}
                   </Link>
                 );
@@ -88,24 +100,27 @@ export default function Navbar() {
 
             {/* Model Selector */}
             <select
-              className="ml-4 rounded border px-2 py-1 text-sm bg-background border-border text-foreground"
               value={selectedModel}
               onChange={(e) => setSelectedModel(e.target.value)}
-              title="Select LLM Model"
+              className="ml-4 rounded-md border border-border bg-background px-2 py-1 text-sm text-foreground"
             >
-              {LLM_MODELS.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.name}
+              {LLM_MODELS.map((model) => (
+                <option key={model.id} value={model.id}>
+                  {model.name}
                 </option>
               ))}
             </select>
           </div>
         )}
 
-        {/* Auth buttons */}
+        {/* Auth Buttons */}
         <div className="hidden items-center gap-4 md:flex">
           {token ? (
-            <button type="button" onClick={handleLogout} className="btn-ghost px-5 py-2">
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="rounded-md border border-border px-5 py-2 text-sm hover:bg-secondary"
+            >
               Sign out
             </button>
           ) : (
@@ -116,27 +131,35 @@ export default function Navbar() {
               >
                 Sign in
               </Link>
-              <Link to="/signup" className="btn-ink px-5 py-2">
+
+              <Link
+                to="/signup"
+                className="rounded-md bg-foreground px-5 py-2 text-sm text-background"
+              >
                 Begin
               </Link>
             </>
           )}
         </div>
 
-        {/* Mobile menu button */}
+        {/* Mobile Toggle */}
         <button
           type="button"
-          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          className="flex h-10 w-10 items-center justify-center rounded-md border border-border text-foreground md:hidden"
+          onClick={() => setMobileMenuOpen((prev) => !prev)}
+          className="flex h-10 w-10 items-center justify-center rounded-md border border-border md:hidden"
         >
-          {mobileMenuOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+          {mobileMenuOpen ? (
+            <X className="h-4 w-4" />
+          ) : (
+            <Menu className="h-4 w-4" />
+          )}
         </button>
       </div>
 
-      {/* Mobile menu */}
+      {/* Mobile Menu */}
       {mobileMenuOpen && (
         <div className="border-t border-border bg-background md:hidden">
-          <div className="mx-auto flex max-w-6xl flex-col gap-1 px-6 py-5">
+          <div className="mx-auto flex max-w-6xl flex-col gap-2 px-6 py-5">
 
             {token ? (
               <>
@@ -145,7 +168,7 @@ export default function Navbar() {
                     key={link.path}
                     to={link.path}
                     onClick={() => setMobileMenuOpen(false)}
-                    className="rounded-md px-3 py-3 text-sm text-foreground hover:bg-secondary"
+                    className="rounded-md px-3 py-3 text-sm hover:bg-secondary"
                   >
                     {link.name}
                   </Link>
@@ -157,7 +180,7 @@ export default function Navbar() {
                     setMobileMenuOpen(false);
                     handleLogout();
                   }}
-                  className="btn-ghost mt-2 w-full"
+                  className="mt-2 rounded-md border border-border px-4 py-2 text-sm"
                 >
                   Sign out
                 </button>
@@ -167,7 +190,7 @@ export default function Navbar() {
                 <Link
                   to="/login"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="rounded-md px-3 py-3 text-sm text-foreground hover:bg-secondary"
+                  className="rounded-md px-3 py-3 text-sm hover:bg-secondary"
                 >
                   Sign in
                 </Link>
@@ -175,7 +198,7 @@ export default function Navbar() {
                 <Link
                   to="/signup"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="btn-ink mt-2 w-full"
+                  className="mt-2 rounded-md bg-foreground px-4 py-2 text-center text-sm text-background"
                 >
                   Begin
                 </Link>

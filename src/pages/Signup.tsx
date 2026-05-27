@@ -1,9 +1,5 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
-
-export const Route = createFileRoute("/signup")({
-  component: SignupPage,
-});
 
 function SignupPage() {
   const [username, setUsername] = useState<string>("");
@@ -23,7 +19,7 @@ function SignupPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail || "Signup failed");
-      navigate({ to: "/login" });
+      navigate("/login");
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "An error occurred during verification.";
       setError(message);
@@ -135,3 +131,5 @@ function SignupPage() {
     </main>
   );
 }
+
+export default SignupPage;

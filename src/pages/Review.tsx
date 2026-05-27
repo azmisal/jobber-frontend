@@ -1,16 +1,7 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import axios from "axios";
-import RequireAuth from "@/components/RequireAuth";
 import type { LocationState, OptimizationProposal, OptimizationResult } from "@/types";
-
-export const Route = createFileRoute("/review")({
-  component: () => (
-    <RequireAuth>
-      <ReviewChangesPage />
-    </RequireAuth>
-  ),
-});
 
 function ReviewChangesPage() {
   const navigate = useNavigate();
@@ -234,7 +225,7 @@ function ReviewChangesPage() {
               >
                 Download resume PDF
               </button>
-              <button onClick={() => navigate({ to: "/" })} className="btn-ghost mt-3 w-full">
+              <button onClick={() => navigate("/")} className="btn-ghost mt-3 w-full">
                 Return to atelier
               </button>
             </aside>
@@ -244,3 +235,5 @@ function ReviewChangesPage() {
     </main>
   );
 }
+
+export default ReviewChangesPage;

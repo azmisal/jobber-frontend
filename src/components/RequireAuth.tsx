@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from "react";
-import { useNavigate } from "@tanstack/react-router";
+import { useNavigate } from "react-router-dom";
 
 export default function RequireAuth({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
@@ -8,7 +8,7 @@ export default function RequireAuth({ children }: { children: ReactNode }) {
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (!token) {
-      navigate({ to: "/login" });
+      navigate("/login");
     } else {
       setReady(true);
     }
