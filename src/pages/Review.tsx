@@ -41,7 +41,7 @@ function ReviewChangesPage() {
       const model = localStorage.getItem("llmModel") || "groq";
       const res = await axios.post<OptimizationResult>(
 
-        `${import.meta.env.VITE_API_BASE_URL}/api/optimize/apply`,
+        `${import.meta.env.VITE_API_BASE_URL}/optimize/apply`,
         {
           approved_ids: approvedIds,
           proposals: proposals,
@@ -57,7 +57,6 @@ function ReviewChangesPage() {
       );
 
       setResult(res.data);
-      console.log("Optimization result: ", result);
     } catch (err) {
       console.error(err);
     } finally {

@@ -20,7 +20,7 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
       const token = localStorage.getItem("token");
 
       const res = await fetch(
-        `${import.meta.env.VITE_API_BASE_URL}/api/resume/profile`,
+        `${import.meta.env.VITE_API_BASE_URL}/resume/profile`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
