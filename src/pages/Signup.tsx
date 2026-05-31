@@ -12,7 +12,7 @@ function SignupPage() {
     e.preventDefault();
     setError("");
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/auth/signup`, {
+      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/auth/signup`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, email, password }),

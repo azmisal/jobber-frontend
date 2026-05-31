@@ -11,7 +11,7 @@ function LoginPage() {
     e.preventDefault();
     setError("");
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/auth/login`, {
+      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
@@ -19,7 +19,7 @@ function LoginPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail || "Login failed");
 
-      localStorage.setItem("token", data.access_token);
+      localStorage.setItem("token", data.token);
       localStorage.setItem("userId", data.user_id);
       navigate("/");
     } catch (err: unknown) {

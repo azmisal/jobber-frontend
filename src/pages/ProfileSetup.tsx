@@ -171,7 +171,7 @@ function ProfileSetupPage() {
       form.append("file", file);
 
       const res = await fetch(
-        `${import.meta.env.VITE_API_BASE_URL}/api/resume/upload`,
+        `${import.meta.env.VITE_API_BASE_URL}/resume/upload`,
         {
           method: "POST",
           headers: { Authorization: `Bearer ${token}` },
@@ -203,7 +203,7 @@ function ProfileSetupPage() {
       const token = localStorage.getItem("token");
 
       const res = await fetch(
-        `${import.meta.env.VITE_API_BASE_URL}/api/resume/rectify`,
+        `${import.meta.env.VITE_API_BASE_URL}/resume/rectify`,
         {
           method: "PUT",
           headers: {

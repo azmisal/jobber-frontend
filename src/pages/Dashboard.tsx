@@ -17,7 +17,7 @@ function DashboardPage() {
   const fetchProfileStatus = async (): Promise<void> => {
     const token = localStorage.getItem("token");
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/resume/profile`, {
+      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/resume/profile`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
@@ -42,7 +42,7 @@ function DashboardPage() {
       const token = localStorage.getItem("token");
       const model = localStorage.getItem("llmModel") || "groq";
 
-      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/optimize/keywords`, {
+      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/optimize/keywords`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -82,7 +82,7 @@ function DashboardPage() {
     try {
       const token = localStorage.getItem("token");
       const model = localStorage.getItem("llmModel") || "groq";
-      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/optimize/proposals`, {
+      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/optimize/proposals`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
