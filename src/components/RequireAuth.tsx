@@ -1,3 +1,4 @@
+import { tokenStore } from "@/lib/tokenStore";
 import { useEffect, useState, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -6,7 +7,7 @@ export default function RequireAuth({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
+    const token = tokenStore().getToken();
     if (!token) {
       navigate("/login");
     } else {

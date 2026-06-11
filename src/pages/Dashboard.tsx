@@ -1,5 +1,8 @@
 import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
+import { tokenStore } from "@/lib/tokenStore";
+
+
 function DashboardPage() {
   const [hasProfile, setHasProfile] = useState<boolean | null>(null);
   const [jd, setJd] = useState<string>("");
@@ -15,7 +18,7 @@ function DashboardPage() {
   }, []);
 
   const fetchProfileStatus = async (): Promise<void> => {
-    const token = localStorage.getItem("token");
+    const token = tokenStore().getToken();
     try {
       const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/resume/profile`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -39,7 +42,7 @@ function DashboardPage() {
     setLoading(true);
     try {
 
-      const token = localStorage.getItem("token");
+      const token = tokenStore().getToken();
       const model = localStorage.getItem("llmModel") || "groq";
 
       const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/optimize/keywords`, {
@@ -80,7 +83,7 @@ function DashboardPage() {
     }
     setLoading(true);
     try {
-      const token = localStorage.getItem("token");
+      const token = tokenStore().getToken();
       const model = localStorage.getItem("llmModel") || "groq";
       const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/optimize/proposals`, {
         method: "POST",

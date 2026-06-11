@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import type { ResumeData, GetProfileResponse } from "@/types";
+import { tokenStore } from "@/lib/tokenStore";
 
 interface ProfileContextType {
   profile: ResumeData | null;
@@ -17,7 +18,7 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
 
   const fetchProfile = async () => {
     try {
-      const token = localStorage.getItem("token");
+      const token = tokenStore().getToken();
 
       const res = await fetch(
         `${import.meta.env.VITE_API_BASE_URL}/resume/profile`,

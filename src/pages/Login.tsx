@@ -1,31 +1,41 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
+import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/context/AuthContext";
 
 function LoginPage() {
-  const [email, setEmail] = useState<string>("");
-  const [password, setPassword] = useState<string>("");
+
+  const [loginData, setLoginData] = useState({ email: "", password: "" });
   const [error, setError] = useState<string>("");
   const navigate = useNavigate();
+  const { toast } = useToast();
+  const { login } = useAuth();
 
-  const handleLogin = async (e: React.FormEvent<HTMLFormElement>): Promise<void> => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-    try {
-      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/auth/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.detail || "Login failed");
 
-      localStorage.setItem("token", data.token);
-      localStorage.setItem("userId", data.user_id);
-      navigate("/");
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "An error occurred during login.";
-      setError(message);
+    try {
+      const response = await login(loginData);
+      toast({
+        title: "Login Successfull;",
+        description: "You are logged in",
+      });
+      navigate("/profile-setup");
+    } catch (err: any) {
+      console.log(err);
+      toast({
+        title: "Login failed",
+        description: "Please try again",
+        variant: "destructive",
+      });
+      setError(err.message || "Login failed. Please try again.");
     }
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setLoginData((prev) => ({ ...prev, [name]: value }));
   };
 
   return (
@@ -71,14 +81,15 @@ function LoginPage() {
             </div>
           )}
 
-          <form onSubmit={handleLogin} className="space-y-7">
+          <form onSubmit={handleSubmit} className="space-y-7">
             <div>
               <label htmlFor="email" className="kicker mb-3 block">Email</label>
               <input
                 id="email"
                 type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                value={loginData.email}
+                name="email"
+                onChange={handleChange}
                 required
                 placeholder="name@studio.com"
                 className="field"
@@ -90,8 +101,9 @@ function LoginPage() {
               <input
                 id="password"
                 type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                name="password"
+                value={loginData.password}
+                onChange={handleChange}
                 required
                 placeholder="••••••••"
                 className="field"

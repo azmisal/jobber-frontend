@@ -2,11 +2,13 @@ import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Menu, X } from "lucide-react";
 import { LLM_MODELS } from "../constants/llmModels";
+import { tokenStore } from "@/lib/tokenStore";
+import { useAuth } from "@/context/AuthContext";
 
 export default function Navbar() {
   const navigate = useNavigate();
   const location = useLocation();
-
+  const { user, logout } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [token, setToken] = useState<string | null>(null);
 
@@ -32,17 +34,19 @@ export default function Navbar() {
 
   // Load token
   useEffect(() => {
-    const storedToken = localStorage.getItem("token");
+    const storedToken = tokenStore().getToken();
     setToken(storedToken);
   }, [location.pathname]);
 
   const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("userId");
-
-    setToken(null);
-
-    navigate("/login");
+    try {
+      logout(user);
+    } catch (error) {
+      console.error("Error during logout:", error);
+    }
+    finally {
+      navigate("/login");
+    }
   };
 
   const navLinks = [
@@ -82,11 +86,10 @@ export default function Navbar() {
                   <Link
                     key={link.path}
                     to={link.path}
-                    className={`relative px-4 py-2 text-sm tracking-wide transition-colors ${
-                      active
-                        ? "text-foreground"
-                        : "text-muted-foreground hover:text-foreground"
-                    }`}
+                    className={`relative px-4 py-2 text-sm tracking-wide transition-colors ${active
+                      ? "text-foreground"
+                      : "text-muted-foreground hover:text-foreground"
+                      }`}
                   >
                     {link.name}
 

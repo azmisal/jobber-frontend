@@ -8,6 +8,7 @@ import Signup from "@/pages/Signup";
 import ProfileSetup from "@/pages/ProfileSetup";
 import Review from "@/pages/Review";
 import { ProfileProvider } from "@/context/ProfileContext";
+import { AuthProvider } from "./context/AuthContext";
 
 function NotFound() {
   return (
@@ -84,6 +85,7 @@ class ErrorBoundary extends Component<
 
 export default function App() {
   return (
+    <AuthProvider>
     <ErrorBoundary>
       <ProfileProvider>
         <Navbar />
@@ -118,5 +120,6 @@ export default function App() {
       </Routes>
     </ProfileProvider>
     </ErrorBoundary>
+    </AuthProvider>
   );
 }
