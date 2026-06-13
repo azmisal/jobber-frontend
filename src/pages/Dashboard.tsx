@@ -2,10 +2,12 @@ import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { tokenStore } from "@/lib/tokenStore";
 import { useAuth } from "@/context/AuthContext";
+import { useProfile } from "@/context/ProfileContext";
 
 
 function DashboardPage() {
-  const [hasProfile, setHasProfile] = useState<boolean | null>(null);
+  const { hasProfile } = useProfile();
+
   const [jd, setJd] = useState<string>("");
   const [outputFileName, setOutputFileName] = useState<string>("");
   const [keywords, setKeywords] = useState<string[]>([]);
@@ -14,53 +16,18 @@ function DashboardPage() {
   const { authLoading, isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
-
+  // Only handle auth gating here; profile fetching is done in ProfileProvider.
   useEffect(() => {
     if (authLoading) return;
-
-    if (!isAuthenticated) {
-      navigate("/login");
-      return;
-    }
-
-    void fetchProfileStatus();
+    if (!isAuthenticated) navigate("/login");
   }, [authLoading, isAuthenticated, navigate]);
 
-  const fetchProfileStatus = async (): Promise<void> => {
-    try {
-      const token = tokenStore().getToken();
+  // If a profile is missing, redirect once we know the context value.
+  useEffect(() => {
+    if (hasProfile === null) return;
+    if (hasProfile === false) navigate("/profile-setup");
+  }, [hasProfile, navigate]);
 
-      if (!token) {
-        navigate("/login");
-        return;
-      }
-
-      const res = await fetch(
-        `${import.meta.env.VITE_API_BASE_URL}/resume/profile`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      if (!res.ok) {
-        throw new Error(`Request failed: ${res.status}`);
-      }
-
-      const data = await res.json();
-
-      if (data.has_profile) {
-        setHasProfile(true);
-      } else {
-        setHasProfile(false);
-        navigate("/profile-setup");
-      }
-    } catch (err) {
-      console.error("Failed to fetch profile status:", err);
-      setHasProfile(false);
-    }
-  };
 
   const handleJDSubmit = async (e: React.FormEvent<HTMLFormElement>): Promise<void> => {
     e.preventDefault();
@@ -147,6 +114,7 @@ function DashboardPage() {
       </div>
     );
   }
+
 
   return (
     <main className="min-h-[calc(100vh-5rem)] px-6 py-16 lg:py-20">

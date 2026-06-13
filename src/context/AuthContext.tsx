@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
+import React, { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
+
 import { IUserLogin, IUserSignup } from "@/interfaces/UserInterfaces";
 import { API, createApiClient } from "../api/api";
 import { tokenStore } from "../lib/tokenStore";
@@ -25,7 +26,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [actionLoading, setActionLoading] = useState(false);
     const navigate = useNavigate();
     /* ---------------- INIT AUTH ---------------- */
+    const didInitAuth = useRef(false);
+
     useEffect(() => {
+        if (didInitAuth.current) return;
+        didInitAuth.current = true;
 
         const initAuth = async () => {
             try {
@@ -49,6 +54,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         initAuth();
     }, []);
+
 
     /* ---------------- AUTH ACTIONS ---------------- */
 

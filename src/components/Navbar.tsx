@@ -36,7 +36,7 @@ export default function Navbar() {
   useEffect(() => {
     const storedToken = tokenStore().getToken();
     setToken(storedToken);
-  }, [location.pathname]);
+  });
 
   const handleLogout = () => {
     try {

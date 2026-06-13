@@ -1,4 +1,5 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useRef, useState } from "react";
+
 import type { ResumeData, GetProfileResponse } from "@/types";
 import { tokenStore } from "@/lib/tokenStore";
 import { useAuth } from "@/context/AuthContext";
@@ -18,8 +19,9 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
   const [hasProfile, setHasProfile] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
   const { refreshToken } = useAuth();
-  
+
   const fetchProfile = async () => {
+
     try {
       let token = tokenStore().getToken();
 
@@ -50,9 +52,14 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const didFetchProfile = useRef(false);
+
   useEffect(() => {
+    if (didFetchProfile.current) return;
+    didFetchProfile.current = true;
     fetchProfile();
   }, []);
+
 
   return (
     <ProfileContext.Provider
