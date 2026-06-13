@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { tokenStore } from "@/lib/tokenStore";
+import { useAuth } from "@/context/AuthContext";
 
 
 function DashboardPage() {
@@ -10,20 +11,45 @@ function DashboardPage() {
   const [keywords, setKeywords] = useState<string[]>([]);
   const [selectedKeywords, setSelectedKeywords] = useState<string[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
+  const { authLoading, isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
+
   useEffect(() => {
-    fetchProfileStatus();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    if (authLoading) return;
+
+    if (!isAuthenticated) {
+      navigate("/login");
+      return;
+    }
+
+    void fetchProfileStatus();
+  }, [authLoading, isAuthenticated, navigate]);
 
   const fetchProfileStatus = async (): Promise<void> => {
-    const token = tokenStore().getToken();
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/resume/profile`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const token = tokenStore().getToken();
+
+      if (!token) {
+        navigate("/login");
+        return;
+      }
+
+      const res = await fetch(
+        `${import.meta.env.VITE_API_BASE_URL}/resume/profile`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!res.ok) {
+        throw new Error(`Request failed: ${res.status}`);
+      }
+
       const data = await res.json();
+
       if (data.has_profile) {
         setHasProfile(true);
       } else {
@@ -31,8 +57,8 @@ function DashboardPage() {
         navigate("/profile-setup");
       }
     } catch (err) {
-      console.error(err);
-      navigate("/profile-setup");
+      console.error("Failed to fetch profile status:", err);
+      setHasProfile(false);
     }
   };
 
@@ -114,10 +140,10 @@ function DashboardPage() {
     }
   };
 
-  if (hasProfile === null) {
+  if (authLoading || hasProfile === null) {
     return (
       <div className="mt-32 text-center kicker justify-center">
-        Loading your profile…
+        Loading...
       </div>
     );
   }

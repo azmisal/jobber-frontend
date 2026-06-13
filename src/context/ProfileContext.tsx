@@ -1,6 +1,8 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import type { ResumeData, GetProfileResponse } from "@/types";
 import { tokenStore } from "@/lib/tokenStore";
+import { useAuth } from "@/context/AuthContext";
+
 
 interface ProfileContextType {
   profile: ResumeData | null;
@@ -15,10 +17,16 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<ResumeData | null>(null);
   const [hasProfile, setHasProfile] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
-
+  const { refreshToken } = useAuth();
+  
   const fetchProfile = async () => {
     try {
-      const token = tokenStore().getToken();
+      let token = tokenStore().getToken();
+
+      if (!token) {
+        await refreshToken();
+        token = tokenStore().getToken();
+      }
 
       const res = await fetch(
         `${import.meta.env.VITE_API_BASE_URL}/resume/profile`,

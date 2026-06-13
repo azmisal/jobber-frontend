@@ -84,6 +84,7 @@ api.interceptors.response.use(
       isRefreshing = true;
 
       try {
+        console.log("Attempting to refresh token...");
         const refreshResponse = await api.post(
           '/auth/refresh',
           {},

@@ -26,26 +26,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const navigate = useNavigate();
     /* ---------------- INIT AUTH ---------------- */
     useEffect(() => {
+
         const initAuth = async () => {
-            let token = tokenStore().getToken();
-            if (!token) {
-                try {
+            try {
+                let token = tokenStore().getToken();
+
+                if (!token) {
                     await refreshToken();
-
                     token = tokenStore().getToken();
-                    if (!token)
-                        navigate("/");
-
-                } catch {
-                    tokenStore().clearToken();
-                    setUser(null);
-                    setIsAuthenticated(false);
-                    navigate("/");
                 }
-            }
+                setIsAuthenticated(!!token);
 
-            setIsAuthenticated(!!token);
-            setAuthLoading(false);
+            } catch {
+                tokenStore().clearToken();
+                setUser(null);
+                setIsAuthenticated(false);
+
+            } finally {
+                setAuthLoading(false);
+            }
         };
 
         initAuth();
@@ -89,18 +88,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const refreshToken = async () => {
         try {
+            console.log("Refreshing token...");
             const response = await API.post(
                 "/auth/refresh",
                 {},
                 { withCredentials: true }
             );
-            const { accessToken, user } = response.data;
+            const { message, user, accessToken } = response.data;
             tokenStore().setToken(accessToken);
             setUser(user);
             setIsAuthenticated(true);
-
         }
-        catch (error) {
+        catch (error: any) {
             console.log(error);
             tokenStore().clearToken();
             setUser(null);
