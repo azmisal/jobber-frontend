@@ -1,37 +1,33 @@
 import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
+import { tokenStore } from "@/lib/tokenStore";
+import { useAuth } from "@/context/AuthContext";
+import { useProfile } from "@/context/ProfileContext";
+
+
 function DashboardPage() {
-  const [hasProfile, setHasProfile] = useState<boolean | null>(null);
+  const { hasProfile } = useProfile();
+
   const [jd, setJd] = useState<string>("");
   const [outputFileName, setOutputFileName] = useState<string>("");
   const [keywords, setKeywords] = useState<string[]>([]);
   const [selectedKeywords, setSelectedKeywords] = useState<string[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
+  const { authLoading, isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
+  // Only handle auth gating here; profile fetching is done in ProfileProvider.
   useEffect(() => {
-    fetchProfileStatus();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    if (authLoading) return;
+    if (!isAuthenticated) navigate("/login");
+  }, [authLoading, isAuthenticated, navigate]);
 
-  const fetchProfileStatus = async (): Promise<void> => {
-    const token = localStorage.getItem("token");
-    try {
-      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/resume/profile`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await res.json();
-      if (data.has_profile) {
-        setHasProfile(true);
-      } else {
-        setHasProfile(false);
-        navigate("/profile-setup");
-      }
-    } catch (err) {
-      console.error(err);
-      navigate("/profile-setup");
-    }
-  };
+  // If a profile is missing, redirect once we know the context value.
+  useEffect(() => {
+    if (hasProfile === null) return;
+    if (hasProfile === false) navigate("/profile-setup");
+  }, [hasProfile, navigate]);
+
 
   const handleJDSubmit = async (e: React.FormEvent<HTMLFormElement>): Promise<void> => {
     e.preventDefault();
@@ -39,7 +35,7 @@ function DashboardPage() {
     setLoading(true);
     try {
 
-      const token = localStorage.getItem("token");
+      const token = tokenStore().getToken();
       const model = localStorage.getItem("llmModel") || "groq";
 
       const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/optimize/keywords`, {
@@ -80,7 +76,7 @@ function DashboardPage() {
     }
     setLoading(true);
     try {
-      const token = localStorage.getItem("token");
+      const token = tokenStore().getToken();
       const model = localStorage.getItem("llmModel") || "groq";
       const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/optimize/proposals`, {
         method: "POST",
@@ -111,13 +107,14 @@ function DashboardPage() {
     }
   };
 
-  if (hasProfile === null) {
+  if (authLoading || hasProfile === null) {
     return (
       <div className="mt-32 text-center kicker justify-center">
-        Loading your profile…
+        Loading...
       </div>
     );
   }
+
 
   return (
     <main className="min-h-[calc(100vh-5rem)] px-6 py-16 lg:py-20">

@@ -1,19 +1,21 @@
-import { useEffect, useState, type ReactNode } from "react";
-import { useNavigate } from "react-router-dom";
+import { ReactNode } from "react";
+import { Navigate } from "react-router-dom";
+import { useAuth } from "@/context/AuthContext";
 
-export default function RequireAuth({ children }: { children: ReactNode }) {
-  const navigate = useNavigate();
-  const [ready, setReady] = useState(false);
+export default function RequireAuth({
+  children,
+}: {
+  children: ReactNode;
+}) {
+  const { isAuthenticated, authLoading } = useAuth();
 
-  useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (!token) {
-      navigate("/login");
-    } else {
-      setReady(true);
-    }
-  }, [navigate]);
+  if (authLoading) {
+    return <div>Loading...</div>;
+  }
 
-  if (!ready) return null;
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+
   return <>{children}</>;
 }

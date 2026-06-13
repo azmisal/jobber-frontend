@@ -2,6 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import axios from "axios";
 import type { LocationState, OptimizationProposal, OptimizationResult } from "@/types";
+import { tokenStore } from "@/lib/tokenStore";
 
 function ReviewChangesPage() {
   const navigate = useNavigate();
@@ -37,7 +38,7 @@ function ReviewChangesPage() {
   const handleFinalSubmit = async (): Promise<void> => {
     setLoading(true);
     try {
-      const token = localStorage.getItem("token");
+      const token = tokenStore().getToken();
       const model = localStorage.getItem("llmModel") || "groq";
       const res = await axios.post<OptimizationResult>(
 

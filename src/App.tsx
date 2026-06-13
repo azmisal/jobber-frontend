@@ -8,10 +8,11 @@ import Signup from "@/pages/Signup";
 import ProfileSetup from "@/pages/ProfileSetup";
 import Review from "@/pages/Review";
 import { ProfileProvider } from "@/context/ProfileContext";
+import { AuthProvider } from "./context/AuthContext";
 
 function NotFound() {
   return (
-    
+
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
         <h1 className="text-7xl font-bold text-foreground">404</h1>
@@ -51,7 +52,7 @@ class ErrorBoundary extends Component<
   render() {
     if (this.state.error) {
       return (
-        
+
         <div className="flex min-h-screen items-center justify-center bg-background px-4">
           <div className="max-w-md text-center">
             <h1 className="text-xl font-semibold tracking-tight text-foreground">
@@ -84,39 +85,20 @@ class ErrorBoundary extends Component<
 
 export default function App() {
   return (
-    <ErrorBoundary>
-      <ProfileProvider>
-        <Navbar />
-        <Routes>
-          <Route
-          path="/"
-          element={
-            <RequireAuth>
-              <Dashboard />
-            </RequireAuth>
-          }
-        />
-        <Route path="/login" element={<Login />} />
-        <Route path="/signup" element={<Signup />} />
-        <Route
-          path="/profile-setup"
-          element={
-            <RequireAuth>
-              <ProfileSetup />
-            </RequireAuth>
-          }
-        />
-        <Route
-          path="/review"
-          element={
-            <RequireAuth>
-              <Review />
-            </RequireAuth>
-          }
-        />
-        <Route path="*" element={<NotFound />} />
-      </Routes>
-    </ProfileProvider>
-    </ErrorBoundary>
+    <AuthProvider>
+      <ErrorBoundary>
+        <ProfileProvider>
+          <Navbar />
+          <Routes>
+            <Route path="/" element={<RequireAuth><Dashboard /></RequireAuth>} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/signup" element={<Signup />} />
+            <Route path="/profile-setup" element={<RequireAuth> <ProfileSetup /> </RequireAuth>} />
+            <Route path="/review" element={<RequireAuth><Review /></RequireAuth>} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </ProfileProvider>
+      </ErrorBoundary>
+    </AuthProvider>
   );
 }

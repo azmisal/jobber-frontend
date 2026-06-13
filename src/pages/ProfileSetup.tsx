@@ -2,6 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { Plus, Pencil, Upload } from "lucide-react";
 import { useProfile } from "@/context/ProfileContext";
+import { tokenStore } from "@/lib/tokenStore";
 
 // ---------------- TYPES ----------------
 type ResumeValue =
@@ -166,7 +167,7 @@ function ProfileSetupPage() {
     setError("");
 
     try {
-      const token = localStorage.getItem("token");
+      const token = tokenStore().getToken();
       const form = new FormData();
       form.append("file", file);
 
@@ -200,7 +201,7 @@ function ProfileSetupPage() {
     setSaving(true);
     setError("");
     try {
-      const token = localStorage.getItem("token");
+      const token = tokenStore().getToken();
 
       const res = await fetch(
         `${import.meta.env.VITE_API_BASE_URL}/resume/rectify`,

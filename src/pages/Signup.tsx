@@ -1,28 +1,64 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
+import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/context/AuthContext";
+import { IUserSignup } from "@/interfaces/UserInterfaces";
+
+
+
+// Password must contain: 1 uppercase, 1 lowercase, 1 number, 1 special char, min 8 chars
+const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+const PASSWORD_REQUIREMENTS = "Password must be at least 8 characters with 1 uppercase, 1 lowercase, 1 number, and 1 special character (@$!%*?&)";
+
 
 function SignupPage() {
-  const [username, setUsername] = useState<string>("");
-  const [email, setEmail] = useState<string>("");
-  const [password, setPassword] = useState<string>("");
+
+  const [SignupData, setSignupData] = useState<IUserSignup>({ username: "", email: "", password: "" });
+  const [passwordError, setPasswordError] = useState("");
   const [error, setError] = useState<string>("");
   const navigate = useNavigate();
+  const { toast } = useToast();
+  const { signup } = useAuth();
 
-  const handleSignup = async (e: React.FormEvent<HTMLFormElement>): Promise<void> => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setSignupData((prev) => ({ ...prev, [name]: value }));
+
+    // Validate password in real-time
+    if (name === "password") {
+      if (value && !PASSWORD_REGEX.test(value)) {
+        setPasswordError(PASSWORD_REQUIREMENTS);
+      } else {
+        setPasswordError("");
+      }
+    }
+  };
+
+  const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+
+    // Final password validation before submission
+    if (SignupData.password && !PASSWORD_REGEX.test(SignupData.password)) {
+      setPasswordError(PASSWORD_REQUIREMENTS);
+      return;
+    }
+
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/auth/signup`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, email, password }),
+      const response = await signup(SignupData);
+      toast({
+        title: "Signup Successfull;",
+        description: "Your account has been created",
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.detail || "Signup failed");
       navigate("/login");
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "An error occurred during verification.";
-      setError(message);
+    } catch (err: any) {
+      console.log(err);
+      toast({
+        title: "Signup failed",
+        description: "Please try again",
+        variant: "destructive",
+      });
+      setError(err.message || "Signup failed. Please try again.");
     }
   };
 
@@ -52,8 +88,8 @@ function SignupPage() {
               <input
                 id="username"
                 type="text"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
+                value={SignupData.username}
+                onChange={handleInputChange}
                 required
                 placeholder="How you'd like to be addressed"
                 className="field"
@@ -65,8 +101,8 @@ function SignupPage() {
               <input
                 id="email"
                 type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                value={SignupData.email}
+                onChange={handleInputChange}
                 required
                 placeholder="name@studio.com"
                 className="field"
@@ -78,8 +114,8 @@ function SignupPage() {
               <input
                 id="password"
                 type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                value={SignupData.password}
+                onChange={handleInputChange}
                 required
                 placeholder="At least eight characters"
                 className="field"
