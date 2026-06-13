@@ -5,7 +5,7 @@ import { useAuth } from "@/context/AuthContext";
 
 function LoginPage() {
 
-  const [loginData, setLoginData] = useState({ email: "azmisaleem96@gmail.com", password: "123" });
+  const [loginData, setLoginData] = useState({ email: "", password: "" });
   const [error, setError] = useState<string>("");
   const navigate = useNavigate();
   const { toast } = useToast();
