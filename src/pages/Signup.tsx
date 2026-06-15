@@ -90,6 +90,7 @@ function SignupPage() {
                 type="text"
                 value={SignupData.username}
                 onChange={handleInputChange}
+                name="username"
                 required
                 placeholder="How you'd like to be addressed"
                 className="field"
@@ -103,6 +104,7 @@ function SignupPage() {
                 type="email"
                 value={SignupData.email}
                 onChange={handleInputChange}
+                name="email"
                 required
                 placeholder="name@studio.com"
                 className="field"
@@ -114,6 +116,7 @@ function SignupPage() {
               <input
                 id="password"
                 type="password"
+                name="password"
                 value={SignupData.password}
                 onChange={handleInputChange}
                 required
